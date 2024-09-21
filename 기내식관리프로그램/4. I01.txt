@@ -1,0 +1,218 @@
+*&---------------------------------------------------------------------*
+*& Include          MZSK20100_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+    WHEN 'ENTER'.
+    WHEN 'SEARCH'.
+      CLEAR: gt_list, gs_list.
+      " ALV에 데이터 취득
+      PERFORM get_alv_data TABLES gt_list
+                           USING zssk20100.
+
+    WHEN 'CHECK'.   "기내식 조회
+      "ALV에서 선택한 정보
+      PERFORM get_selected_rows USING gt_list
+                                CHANGING gt_rows gv_subrc gs_list.
+      " Screen 0101 정보1 => 기내식 정보
+      IF gv_subrc = 0.
+        CASE gs_list-apstatus.
+          WHEN 'B'.
+            PERFORM get_menu USING gs_list-carrid gs_list-menunumber
+                                    CHANGING gs_data.
+            " Screen 0101 정보2
+            PERFORM get_data2_0101 USING gs_data-starter gs_data-carrid               "에피타이저
+                                   CHANGING gs_data-startert.
+            PERFORM get_data2_0101 USING gs_data-maincourse gs_data-carrid             "메인요리
+                                   CHANGING gs_data-maincourset.
+            PERFORM get_data2_0101 USING gs_data-dessert gs_data-carrid                "디저트
+                                   CHANGING gs_data-dessertt.
+            " 0101 str로 데이터 이동
+            PERFORM move_data_0101 USING gs_data
+                                   CHANGING zssk201002.
+          WHEN 'A' OR 'C' OR ''.
+            MESSAGE i000(zmc5a20) WITH TEXT-c01.      "아직 신청한 기내식이 없습니다.
+            RETURN.
+        ENDCASE.
+      ELSEIF gv_subrc = 2.
+        MESSAGE i019(zmc5a20).  " 데이터를 선택해주세요
+        CLEAR gv_subrc.
+        RETURN.
+      ELSEIF gv_subrc = 4.
+        MESSAGE i020(zmc5a20).  " 하나의 데이터만 선택해주세요
+        CLEAR gv_subrc.
+        RETURN.
+      ENDIF.
+      CLEAR gv_subrc.
+      CALL SCREEN 0101 STARTING AT 10 10.
+
+    WHEN 'APPLY'.     "기내식 신청
+      CLEAR gv_subrc.
+      "선택한 ALV 정보
+      PERFORM get_selected_rows USING gt_list
+                                CHANGING gt_rows gv_subrc gs_list.
+      IF gv_subrc = 0.
+        " 선택한 항공편 예약건의 기내식 신청 상태가 신청완료 이고, 신청일자가 현재일인 경우
+        IF gs_list-apstatus = 'B' AND gs_list-applydate = sy-datum.
+          MESSAGE i000(zmc5a20) WITH TEXT-c04.  "신청당일에는 기내식을 변경할 수 없습니다.
+          RETURN.
+        ELSEIF gs_list-enddate = sy-datum.
+          MESSAGE i000(zmc5a20) WITH TEXT-c10.      "오늘 취소한 기내식은 오늘 신청이 불가능합니다.
+          RETURN.
+        ENDIF.
+        PERFORM move_data_0200 USING gs_list
+                               CHANGING zssk201001.
+        " Screen 200에 들어갈 데이터 취득
+        PERFORM get_data_alv_0200 CHANGING gt_list2 gs_list2.
+        CALL SCREEN 0200.
+      ELSEIF gv_subrc = 2.
+        MESSAGE i000(zmc5a20) WITH TEXT-c02.  "신청 가능한 항공편 예약을 선택하세요
+        CLEAR gv_subrc.
+        RETURN.
+      ELSEIF gv_subrc = 4.
+        MESSAGE i000(zmc5a20) WITH TEXT-c03.  "한 건의 항공편만 선택하세요
+        CLEAR gv_subrc.
+        RETURN.
+      ENDIF.
+
+    WHEN 'DELETE'.
+      "선택한 ALV 정보
+      PERFORM get_selected_rows USING gt_list
+                                CHANGING gt_rows gv_subrc gs_list.
+      IF gv_subrc = 0.
+        IF gs_list-apstatus <> 'B'.
+          MESSAGE i000(zmc5a20) WITH TEXT-c08.      "기내식 신청 취소가 불가능한 예약입니다
+          RETURN.
+        ELSEIF gs_list-applydate = sy-datum.
+          MESSAGE i000(zmc5a20) WITH TEXT-c07.      "오늘 예약한 기내식은 오늘 취소가 불가능합니다.
+          RETURN.
+        ENDIF.
+        PERFORM update_data_0100 USING gs_list
+                                 CHANGING gv_subrc2.
+        IF gv_subrc2 <> 0 .
+          ROLLBACK WORK.
+          MESSAGE a017(zmc5a20).    "Error: Data Update
+        ELSE.
+          COMMIT WORK.
+          MESSAGE s018(zmc5a20).    "Update Successful
+          " ALV에 데이터 취득
+          PERFORM get_alv_data TABLES gt_list
+                               USING zssk20100.
+        ENDIF.
+      ELSEIF gv_subrc = 2.
+        MESSAGE i000(zmc5a20) WITH TEXT-c06.  "취소 가능한 기내식 신청 예약 건을 선택하세요
+        CLEAR gv_subrc.
+        RETURN.
+      ELSEIF gv_subrc = 4.
+        CLEAR gv_subrc.
+      ENDIF.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  CASE ok_code.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+    WHEN 'CANC'.
+      CLEAR: gt_list, gs_list.
+      " ALV에 데이터 취득
+      PERFORM get_alv_data TABLES gt_list
+                           USING zssk20100.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0101  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0101 INPUT.
+  CASE ok_code.
+    WHEN 'ENTER' OR 'CANCEL'.
+      CLEAR zssk201002.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      CLEAR: gt_list, gs_list.
+      " ALV에 데이터 취득
+      PERFORM get_alv_data TABLES gt_list
+                           USING zssk20100.
+      LEAVE TO SCREEN 0.
+    WHEN 'SAVE'.
+      "ALV에서 선택한 정보
+      PERFORM get_selected_rows_0200 USING gt_list2
+                                     CHANGING gt_rows gv_subrc gs_list2.
+      IF gs_list-menunumber = gs_list2-menunumber.
+        MESSAGE i000(zmc5a20) WITH TEXT-c05.    "같은 기내식으로는 변경할 수 없습니다.
+        RETURN.
+      ENDIF.
+      " Screen 0200에서 선택한 기내식의 정보
+      IF gv_subrc = 0.
+        PERFORM insert_data_0200 USING gs_list gs_list2
+                                 CHANGING gv_subrc2.
+        IF gv_subrc2 <> 0.
+          ROLLBACK WORK.
+          MESSAGE a021(zmc5a20).    "Error: Insert Data
+        ELSE.
+          " Update Data
+          CASE zssk201001-apstatus.
+            WHEN '' OR 'A' OR 'C'.
+              zssk201001-menunumber = gs_list2-menunumber.
+              PERFORM move_data_0200_to_0101 USING gs_list2
+                                             CHANGING zssk201002.
+              CALL SCREEN 0101 STARTING AT 10 10.
+              MESSAGE s016(zmc5a20).    "Upload Successful
+              PERFORM get_alv_data TABLES gt_list
+                                   USING zssk20100.
+              LEAVE TO SCREEN 0.
+            WHEN 'B'.
+              PERFORM update_data_0200 USING gs_list
+                                       CHANGING gv_subrc3.
+              IF gv_subrc3 <> 0.
+                ROLLBACK WORK.
+                MESSAGE a022(zmc5a20).    "Error: Update Data
+              ELSE.
+                zssk201001-menunumber = gs_list2-menunumber.
+                COMMIT WORK.
+                PERFORM move_data_0200_to_0101 USING gs_list2
+                                             CHANGING zssk201002.
+                CALL SCREEN 0101 STARTING AT 10 10.
+                MESSAGE s018(zmc5a20).    "Update Successful
+                PERFORM get_alv_data TABLES gt_list
+                                     USING zssk20100.
+                LEAVE TO SCREEN 0.
+              ENDIF.
+          ENDCASE.
+          zssk201001-apstatus = 'B'.
+        ENDIF.
+      ELSEIF gv_subrc = 2.
+        MESSAGE i019(zmc5a20).  " 데이터를 선택해주세요
+        CLEAR gv_subrc.
+        RETURN.
+      ELSEIF gv_subrc = 4.
+        MESSAGE i020(zmc5a20).  " 하나의 데이터만 선택해주세요
+        CLEAR gv_subrc.
+        RETURN.
+      ENDIF.
+      CLEAR: gv_subrc, gv_subrc2, gv_subrc3.
+  ENDCASE.
+ENDMODULE.

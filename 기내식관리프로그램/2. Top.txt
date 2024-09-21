@@ -1,0 +1,40 @@
+*&---------------------------------------------------------------------*
+*& Include MZSK20100_TOP                            - Module Pool      SAPMZSK20100
+*&---------------------------------------------------------------------*
+PROGRAM sapmzsk20100.
+
+DATA: ok_code  TYPE sy-ucomm,
+      ok_code2 TYPE sy-ucomm,
+      gv_subrc TYPE sy-subrc,
+      gv_subrc2 TYPE sy-subrc,
+      gv_subrc3 TYPE sy-subrc.
+*        조건      Screen 0200  Screen 0101  rad button / checkbox
+TABLES: zssk20100,zssk201001, zssk201002, zssk201004.
+" ALV 관련
+DATA: go_con  TYPE REF TO cl_gui_custom_container,
+      go_alv  TYPE REF TO cl_gui_alv_grid,
+      gs_layo TYPE lvc_s_layo,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat LIKE LINE OF gt_fcat,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort LIKE LINE OF gt_sort,
+      gt_fcat2 TYPE lvc_t_fcat,
+      gs_fcat2 LIKE LINE OF gt_fcat2,
+      gs_layo2 TYPE lvc_s_layo.
+
+DATA: gs_list TYPE zssk201001,
+      gt_list LIKE TABLE OF gs_list,
+      gs_data TYPE zssk201002,
+      gt_data LIKE TABLE OF gs_data,
+      gs_list2 TYPE zssk201003,
+      gt_list2 LIKE TABLE OF gs_list2.
+
+DATA: gs_dom TYPE dd07v,
+      gt_dom LIKE TABLE OF gs_dom.
+
+DATA: gt_bid TYPE RANGE OF sbook-bookid,
+      gt_cid TYPE RANGE OF sbook-customid,
+      gt_sts TYPE RANGE OF ztsk20req-apstatus.
+
+DATA: gt_rows TYPE lvc_t_row,
+      gs_rows LIKE LINE OF gt_rows.

@@ -1,0 +1,854 @@
+*&---------------------------------------------------------------------*
+*& Include          MZSK20100_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form set_alv_0100
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_alv_0100 .
+  CREATE OBJECT go_con
+    EXPORTING
+*     parent         =
+      container_name = 'CON'
+*     style          =
+*     lifetime       = lifetime_default
+*     repid          =
+*     dynnr          =
+*     no_autodef_progid_dynnr     =
+*    EXCEPTIONS
+*     cntl_error     = 1
+*     cntl_system_error           = 2
+*     create_error   = 3
+*     lifetime_error = 4
+*     lifetime_dynpro_dynpro_link = 5
+*     others         = 6
+    .
+  IF sy-subrc <> 0.
+    MESSAGE a010(zmc5a20).    "Error: Create Container
+  ENDIF.
+
+  CREATE OBJECT go_alv
+    EXPORTING
+*     i_shellstyle      = 0
+*     i_lifetime        =
+      i_parent = go_con
+*     i_appl_events     = SPACE
+*     i_parentdbg       =
+*     i_applogparent    =
+*     i_graphicsparent  =
+*     i_name   =
+*     i_fcat_complete   = SPACE
+*     o_previous_sral_handler =
+*  EXCEPTIONS
+*     error_cntl_create = 1
+*     error_cntl_init   = 2
+*     error_cntl_link   = 3
+*     error_dp_create   = 4
+*     others   = 5
+    .
+  IF sy-subrc <> 0.
+    MESSAGE a011(zmc5a20).    "Error: Create ALV
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_alv_0100
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_alv_0100 .
+  PERFORM set_layout CHANGING gs_layo.
+  PERFORM set_fieldcatalog.
+  PERFORM set_sort.
+
+  CALL METHOD go_alv->set_table_for_first_display
+    EXPORTING
+*     i_buffer_active  =
+*     i_bypassing_buffer            =
+*     i_consistency_check           =
+      i_structure_name = 'ZSSK201001'
+*     is_variant       =
+*     i_save           =
+*     i_default        = 'X'
+      is_layout        = gs_layo
+*     is_print         =
+*     it_special_groups             =
+*     it_toolbar_excluding          =
+*     it_hyperlink     =
+*     it_alv_graphics  =
+*     it_except_qinfo  =
+*     ir_salv_adapter  =
+    CHANGING
+      it_outtab        = gt_list
+      it_fieldcatalog  = gt_fcat
+      it_sort          = gt_sort
+*     it_filter        =
+*    EXCEPTIONS
+*     invalid_parameter_combination = 1
+*     program_error    = 2
+*     too_many_lines   = 3
+*     others           = 4
+    .
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_alv_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_alv_data TABLES pt_list STRUCTURE zssk201001
+                  USING VALUE(ps_con) TYPE zssk20100.
+  DATA: ls_bid  LIKE LINE OF gt_bid,
+        ls_cid  LIKE LINE OF gt_cid,
+        ls_sts  LIKE LINE OF gt_sts,
+        ls_list LIKE LINE OF gt_list.
+  CLEAR: pt_list, gt_bid, gt_cid, gt_sts.
+  IF ps_con-bookid IS NOT INITIAL.    "bookid에 값이 있는 경우
+    ls_bid-sign = 'I'.
+    ls_bid-option = 'EQ'.
+    ls_bid-low = ps_con-bookid.
+    APPEND ls_bid TO gt_bid.
+    CLEAR ls_bid.
+  ENDIF.
+  IF ps_con-customid IS NOT INITIAL.   "customid에 값이 있는 경우
+    ls_cid-sign = 'I'.
+    ls_cid-option = 'EQ'.
+    ls_cid-low = ps_con-customid.
+    APPEND ls_cid TO gt_cid.
+    CLEAR ls_cid.
+  ENDIF.
+*  IF ps_con-stats IS NOT INITIAL.       "stats 에 값이 있는 경우
+*    ls_sts-sign = 'I'.
+*    ls_sts-option = 'EQ'.
+*    ls_sts-low = ps_con-stats.
+*    APPEND ls_sts TO gt_sts.
+*    CLEAR ls_sts.
+*  ENDIF.
+  " ALV 데이터 취득
+  PERFORM get_alv_data2 USING gt_bid gt_cid gt_sts ps_con
+                        CHANGING gt_list.
+  "추가 정보 취득
+  PERFORM add_alv_data USING gt_sts zssk20100
+                       CHANGING gt_list ls_list gt_dom gs_dom.
+
+  PERFORM delete_condition USING zssk201004
+                           CHANGING gt_list.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_layout CHANGING ps_layo TYPE lvc_s_layo.
+  IF ps_layo IS INITIAL.
+    ps_layo-zebra = 'X'.
+    ps_layo-cwidth_opt = 'X'.
+    ps_layo-sel_mode = 'A'.
+    ps_layo-no_merging = 'X'.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fieldcatalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fieldcatalog .
+  CLEAR: gt_fcat, gs_fcat.
+  gs_fcat-col_pos = '14'.
+  gs_fcat-fieldname = 'CARRID'.
+  gs_fcat-coltext = 'Airline Code'.
+  gs_fcat-no_out = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-col_pos = '13'.
+  gs_fcat-fieldname = 'CONNID'.
+  gs_fcat-coltext = 'Connection No'.
+  gs_fcat-no_out = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-col_pos = '12'.
+  gs_fcat-fieldname = 'FLDATE'.
+  gs_fcat-coltext = 'Flight Date'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-col_pos = '1'.
+  gs_fcat-fieldname = 'BOOKID'.
+  gs_fcat-coltext = 'Booking No'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-col_pos = '2'.
+  gs_fcat-fieldname = 'CUSTOMID'.
+  gs_fcat-coltext = 'Customer No'.
+  gs_fcat-no_out = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-col_pos = '8'.
+  gs_fcat-fieldname = 'CUSTTYPE'.
+  gs_fcat-coltext = 'Customer Type'.
+  gs_fcat-no_out = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-col_pos = '10'.
+  gs_fcat-fieldname = 'CLASS'.
+  gs_fcat-coltext = 'Flight Class'.
+  gs_fcat-no_out = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-col_pos = '13'.
+  gs_fcat-fieldname = 'CARRNAME'.
+  gs_fcat-coltext = 'Airline Name'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-col_pos = '2'.
+  gs_fcat-fieldname = 'NAME'.
+  gs_fcat-coltext = 'Customer Name'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-fieldname = 'CANCELLED'.
+  gs_fcat-no_out = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-fieldname = 'MENUNUMBER'.
+  gs_fcat-no_out = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-col_pos = '4'.
+  gs_fcat-fieldname = 'APSTATUS'.
+  gs_fcat-coltext = 'Apply'.
+  gs_fcat-no_out = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-col_pos = '5'.
+  gs_fcat-fieldname = 'APSTATUST'.
+  gs_fcat-coltext = '신청상태명'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+
+  gs_fcat-col_pos = '9'.
+  gs_fcat-fieldname = 'CUSTTYPET'.
+  gs_fcat-coltext = '고객구분명'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-col_pos = '10'.
+  gs_fcat-fieldname = 'CLASST'.
+  gs_fcat-coltext = '좌석등급명'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-col_pos = '6'.
+  gs_fcat-fieldname = 'APPLYDATE'.
+  gs_fcat-coltext = 'APPLYDATE'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-col_pos = '7'.
+  gs_fcat-fieldname = 'ENDDATE'.
+  gs_fcat-coltext = 'ENDDATE'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+  gs_fcat-fieldname = 'DATE'.
+  gs_fcat-no_out = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_domain_values
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      <-- GT_DOM
+*&---------------------------------------------------------------------*
+FORM get_domain_values  USING    VALUE(p_domain)
+                        CHANGING pt_dom LIKE gt_dom.
+  CALL FUNCTION 'GET_DOMAIN_VALUES'
+    EXPORTING
+      domname    = p_domain
+*     TEXT       = 'X'
+*     FILL_DD07L_TAB        = ' '
+    TABLES
+      values_tab = pt_dom
+*     VALUES_DD07L          =
+*       EXCEPTIONS
+*     NO_VALUES_FOUND       = 1
+*     OTHERS     = 2
+    .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form add_alv_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- GS_LIST
+*&      <-- LS_LIST
+*&---------------------------------------------------------------------*
+FORM add_alv_data  USING VALUE(lt_sts) LIKE gt_sts
+                         VALUE(ps_con) TYPE zssk20100
+                   CHANGING pt_list TYPE zssk201001_t
+                            ps_list LIKE gs_list
+                            pt_dom TYPE /accgo/cmgl_tt_dd07v
+                            ps_dom TYPE dd07v.
+  LOOP AT pt_list INTO ps_list.
+    SELECT SINGLE carrname
+      FROM scarr
+      INTO ps_list-carrname
+     WHERE carrid = ps_list-carrid.
+
+    SELECT SINGLE name
+      FROM scustom
+      INTO CORRESPONDING FIELDS OF ps_list
+     WHERE id = ps_list-customid.
+    " 신청 레코드 취득
+    PERFORM get_status CHANGING ps_list.
+*    domain 가져오기
+    PERFORM get_domain_values USING 'S_CUSTTYPE'
+                              CHANGING pt_dom.
+    READ TABLE pt_dom WITH KEY domvalue_l = ps_list-custtype INTO ps_dom.
+    ps_list-custtypet = ps_dom-ddtext.
+    CLEAR: pt_dom, ps_dom.
+    PERFORM get_domain_values USING 'S_CLASS'
+                              CHANGING pt_dom.
+    READ TABLE pt_dom WITH KEY domvalue_l = ps_list-class INTO ps_dom.
+    ps_list-classt = ps_dom-ddtext.
+    CLEAR: pt_dom, ps_dom.
+    PERFORM get_domain_values USING 'ZD5A20APST'
+                              CHANGING pt_dom.
+    READ TABLE pt_dom WITH KEY domvalue_l = ps_list-apstatus INTO ps_dom.
+    ps_list-apstatust = ps_dom-ddtext.
+    CLEAR: pt_dom, ps_dom.
+
+    MODIFY pt_list FROM ps_list.
+    CLEAR ps_list.
+  ENDLOOP.
+  IF ps_con-stats IS INITIAL OR ps_con-stats = 'A'.
+    RETURN.
+  ELSE.
+    DELETE pt_list WHERE apstatus <> ps_con-stats.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_alv_data2
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GT_BID
+*&      --> GT_CID
+*&      --> PS_CON
+*&      <-- GT_LIST
+*&---------------------------------------------------------------------*
+FORM get_alv_data2  USING    VALUE(pt_bid)  LIKE gt_bid
+                             VALUE(pt_cid)  LIKE gt_cid
+                             VALUE(pt_sts)  LIKE gt_sts
+                             VALUE(ps_con)  TYPE zssk20100
+                    CHANGING pt_list TYPE zssk201001_t.
+  DATA ls_list LIKE LINE OF pt_list.
+
+  SELECT bookid customid custtype class carrid connid fldate cancelled
+    FROM sbook
+    INTO CORRESPONDING FIELDS OF TABLE pt_list
+   WHERE carrid = ps_con-carrid
+     AND connid = ps_con-connid
+     AND fldate = ps_con-fldate
+     AND bookid IN pt_bid
+     AND customid IN pt_cid.
+  IF sy-subrc <> 0 .
+    RETURN.
+  ENDIF.
+
+
+*  SELECT a~carrid, a~connid, a~fldate, a~bookid, a~customid, a~custtype, a~class, a~cancelled,
+*         b~apstatus, b~menunumber, b~applydate, b~enddate
+*    FROM sbook AS a LEFT OUTER JOIN ztsk20req AS b
+*      ON a~carrid = b~carrid
+*     AND a~connid = b~connid
+*     AND a~fldate = b~fldate
+*     AND a~bookid = b~bookid
+*    INTO CORRESPONDING FIELDS OF TABLE @pt_list
+*   WHERE a~carrid = @ps_con-carrid
+*     AND a~connid = @ps_con-connid
+*     AND a~fldate = @ps_con-fldate
+*     AND a~bookid IN @pt_bid
+*     AND a~customid IN @pt_cid
+*     AND b~apstatus IN @pt_sts
+*     AND a~cancelled = ''.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_data2_0101
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> LS_DATA_STARTER
+*&      <-- LS_DATA_STARTERT
+*&---------------------------------------------------------------------*
+FORM get_data2_0101  USING    VALUE(pv_meal)
+                              VALUE(pv_car)
+                     CHANGING pv_mealt.
+  SELECT SINGLE text
+          FROM smealt
+          INTO pv_mealt
+         WHERE mealnumber = pv_meal
+           AND sprache = sy-langu.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_selected_rows
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- GT_ROWS
+*&---------------------------------------------------------------------*
+FORM get_selected_rows  USING VALUE(pt_list) TYPE zssk201001_t
+                        CHANGING pt_rows TYPE lvc_t_row
+                                 pv_subrc TYPE sy-subrc
+                                 ps_list TYPE zssk201001.
+  DATA: lv_row  TYPE i,
+        ls_rows LIKE LINE OF gt_rows,
+        ls_list LIKE LINE OF gt_list,
+        ls_data LIKE LINE OF gt_data.
+
+  CLEAR: pv_subrc, pt_rows, ps_list.
+
+  CALL METHOD go_alv->get_selected_rows
+    IMPORTING
+      et_index_rows = pt_rows
+*     et_row_no     =
+    .
+  DESCRIBE TABLE gt_rows LINES lv_row.
+
+  IF lv_row = 0.
+    pv_subrc = 2.
+  ELSEIF lv_row = 1.
+    READ TABLE pt_rows INDEX 1 INTO ls_rows.
+    READ TABLE pt_list INDEX ls_rows-index INTO ps_list.
+    pv_subrc = 0.
+  ELSE.
+    pv_subrc = 4.
+    IF ok_code = 'DELETE'.
+      LOOP AT pt_rows INTO ls_rows.
+        READ TABLE pt_list INDEX ls_rows-index INTO ps_list.
+        IF ps_list-apstatus <> 'B'.
+          MESSAGE i000(zmc5a20) WITH TEXT-c08.      "기내식 신청 취소가 불가능한 예약입니다
+          RETURN.
+        ELSEIF ps_list-applydate = sy-datum.
+          MESSAGE i000(zmc5a20) WITH TEXT-c07.      "오늘 예약한 기내식은 오늘 취소가 불가능합니다.
+          RETURN.
+        ENDIF.
+      ENDLOOP.
+      LOOP AT pt_rows INTO ls_rows.
+        READ TABLE pt_list INDEX ls_rows-index INTO ps_list.
+        " 데이터 업데이트
+        PERFORM update_data_0100 USING gs_list
+                                 CHANGING gv_subrc2.
+        IF gv_subrc2 <> 0 .
+          ROLLBACK WORK.
+          MESSAGE a017(zmc5a20).    "Error: Data Update
+        ELSE.
+          COMMIT WORK.
+          MESSAGE s018(zmc5a20).    "Update Successful
+        ENDIF.
+      ENDLOOP.
+    ENDIF.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form move_data_0101
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_DATA
+*&      <-- ZSSK201002
+*&---------------------------------------------------------------------*
+FORM move_data_0101  USING    ps_data TYPE zssk201002
+                     CHANGING ps_str TYPE zssk201002.
+  ps_str-starter = ps_data-starter .
+  ps_str-maincourse = ps_data-maincourse .
+  ps_str-dessert = ps_data-dessert .
+  ps_str-startert = ps_data-startert.
+  ps_str-maincourset = ps_data-maincourset .
+  ps_str-dessertt = ps_data-dessertt .
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_menu
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_LIST_CARRID
+*&      --> GS_LIST_MENUNUMBER
+*&      <-- GS_DATA
+*&---------------------------------------------------------------------*
+FORM get_menu  USING    VALUE(pv_carrid)
+                        VALUE(pv_menunumber)
+               CHANGING ps_data TYPE zssk201002.
+  CLEAR ps_data.
+  SELECT SINGLE starter maincourse dessert
+          FROM smenu
+          INTO CORRESPONDING FIELDS OF ps_data
+         WHERE menunumber = pv_menunumber
+           AND carrid = pv_carrid.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form move_data_0200
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_LIST
+*&      <-- ZSSK201002
+*&---------------------------------------------------------------------*
+FORM move_data_0200  USING    VALUE(ps_list) TYPE zssk201001
+                     CHANGING ps_str TYPE zssk201001.
+  ps_str-carrid = ps_list-carrid.
+  ps_str-connid = ps_list-connid.
+  ps_str-fldate = ps_list-fldate.
+  ps_str-bookid = ps_list-bookid.
+  ps_str-customid = ps_list-customid.
+  ps_str-name = ps_list-name.
+  ps_str-date = sy-datum.
+  ps_str-apstatus = ps_list-apstatus.
+  ps_str-menunumber = ps_list-menunumber.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_0200
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_0200 .
+  PERFORM set_layout CHANGING gs_layo2.
+  CALL METHOD go_alv->set_table_for_first_display
+    EXPORTING
+*     i_buffer_active  =
+*     i_bypassing_buffer            =
+*     i_consistency_check           =
+      i_structure_name = 'ZSSK201003'
+*     is_variant       =
+*     i_save           =
+*     i_default        = 'X'
+      is_layout        = gs_layo2
+*     is_print         =
+*     it_special_groups             =
+*     it_toolbar_excluding          =
+*     it_hyperlink     =
+*     it_alv_graphics  =
+*     it_except_qinfo  =
+*     ir_salv_adapter  =
+    CHANGING
+      it_outtab        = gt_list2
+*     it_fieldcatalog  =
+*     it_sort          =
+*     it_filter        =
+*    EXCEPTIONS
+*     invalid_parameter_combination = 1
+*     program_error    = 2
+*     too_many_lines   = 3
+*     others           = 4
+    .
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_data_alv_0200
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- GT_LIST2
+*&---------------------------------------------------------------------*
+FORM get_data_alv_0200  CHANGING pt_list2 LIKE gt_list2
+                                 ps_list2 LIKE gs_list2.
+  CLEAR pt_list2.
+  SELECT carrid menunumber starter maincourse dessert
+    FROM smenu
+    INTO CORRESPONDING FIELDS OF TABLE pt_list2
+   WHERE carrid = gs_list-carrid.
+
+  LOOP AT pt_list2 INTO ps_list2.
+    PERFORM get_data2_0101 USING gs_list2-starter gs_list2-carrid               "에피타이저
+                                 CHANGING gs_list2-startert.
+    PERFORM get_data2_0101 USING gs_list2-maincourse gs_list2-carrid             "메인요리
+                           CHANGING gs_list2-maincourset.
+    PERFORM get_data2_0101 USING gs_list2-dessert gs_list2-carrid                "디저트
+                           CHANGING gs_list2-dessertt.
+    MODIFY pt_list2 FROM ps_list2.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_selected_rows_0200
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GT_LIST2
+*&      <-- GT_ROWS
+*&      <-- GV_SUBRC
+*&      <-- GS_LIST2
+*&---------------------------------------------------------------------*
+FORM get_selected_rows_0200  USING VALUE(pt_list) TYPE zssk201003_t
+                             CHANGING pt_rows TYPE lvc_t_row
+                                      pv_subrc TYPE sy-subrc
+                                      ps_list TYPE zssk201003.
+  DATA: lv_row  TYPE i,
+        ls_rows LIKE LINE OF gt_rows,
+        ls_list LIKE LINE OF gt_list,
+        ls_data LIKE LINE OF gt_data.
+
+  CLEAR: pv_subrc, pt_rows, ps_list.
+
+  CALL METHOD go_alv->get_selected_rows
+    IMPORTING
+      et_index_rows = pt_rows
+*     et_row_no     =
+    .
+  DESCRIBE TABLE gt_rows LINES lv_row.
+
+  IF lv_row = 0.
+    pv_subrc = 2.
+  ELSEIF lv_row = 1.
+    READ TABLE pt_rows INDEX 1 INTO ls_rows.
+    READ TABLE pt_list INDEX ls_rows-index INTO ps_list.
+    pv_subrc = 0.
+  ELSE.
+    pv_subrc = 4.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form insert_data_0200
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_LIST
+*&      <-- ZTSK20REQ
+*&---------------------------------------------------------------------*
+FORM insert_data_0200  USING    VALUE(ps_list) TYPE zssk201001
+                                VALUE(ps_list2) TYPE zssk201003
+                       CHANGING pv_subrc TYPE sy-subrc.
+  DATA ls_data TYPE ztsk20req.
+  CLEAR: ls_data, pv_subrc.
+  ls_data-carrid = ps_list-carrid.
+  ls_data-connid = ps_list-connid.
+  ls_data-fldate = ps_list-fldate.
+  ls_data-bookid = ps_list-bookid.
+  ls_data-applydate = sy-datum.
+  ls_data-enddate = '99991231'.
+  ls_data-menunumber = ps_list2-menunumber.
+  ls_data-apstatus = 'B'.
+
+  " Insert Data
+  INSERT ztsk20req FROM ls_data.
+  pv_subrc = sy-subrc.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form update_data_0200
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM update_data_0200 USING VALUE(ps_list) TYPE zssk201001
+                      CHANGING pv_subrc TYPE sy-subrc.
+  DATA: ls_data TYPE ztsk20req,
+        lv_date TYPE d.
+  CLEAR: ls_data, lv_date.
+  CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL'
+    EXPORTING
+      date      = sy-datum
+      days      = 1
+      months    = 0
+      signum    = '-'
+      years     = 0
+    IMPORTING
+      calc_date = lv_date.
+
+  ls_data-enddate = lv_date.
+  ls_data-apstatus = 'C'.
+
+  UPDATE ztsk20req SET enddate = ls_data-enddate
+                       apstatus = ls_data-apstatus
+                   WHERE carrid = ps_list-carrid
+                     AND connid = ps_list-connid
+                     AND fldate = ps_list-fldate
+                     AND bookid = ps_list-bookid
+                     AND applydate = ps_list-applydate.
+  pv_subrc = sy-subrc.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form move_data_0200_to_0101
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM move_data_0200_to_0101 USING VALUE(ps_list) TYPE zssk201003
+                            CHANGING ps_str TYPE zssk201002.
+  ps_str-starter = ps_list-starter .
+  ps_str-maincourse = ps_list-maincourse .
+  ps_str-dessert = ps_list-dessert .
+  ps_str-startert = ps_list-startert.
+  ps_str-maincourset = ps_list-maincourset .
+  ps_str-dessertt = ps_list-dessertt .
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form update_data_0100
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_LIST
+*&      <-- GV_SUBRC2
+*&---------------------------------------------------------------------*
+FORM update_data_0100 USING VALUE(ps_list) TYPE zssk201001
+                      CHANGING pv_subrc TYPE sy-subrc.
+  DATA: ls_data TYPE ztsk20req.
+  CLEAR: ls_data .
+  ls_data-enddate = sy-datum.
+  ls_data-apstatus = 'C'.
+
+  UPDATE ztsk20req SET  enddate = ls_data-enddate
+                       apstatus = ls_data-apstatus
+                   WHERE carrid = ps_list-carrid
+                     AND connid = ps_list-connid
+                     AND fldate = ps_list-fldate
+                     AND bookid = ps_list-bookid
+                     AND applydate = ps_list-applydate.
+  pv_subrc = sy-subrc.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_sort
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_sort .
+  CLEAR: gt_sort, gs_sort.
+  gs_sort-spos = '1'.
+  gs_sort-fieldname = 'APSTATUS'.
+  gs_sort-down = 'X'.
+  APPEND gs_sort TO gt_sort.
+  CLEAR gs_sort.
+
+  gs_sort-spos = '2'.
+  gs_sort-fieldname = 'BOOKID'.
+  gs_sort-up = 'X'.
+  APPEND gs_sort TO gt_sort.
+  CLEAR gs_sort.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form delete_condition
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ZSSK201004
+*&---------------------------------------------------------------------*
+FORM delete_condition  USING    VALUE(ps_str) TYPE zssk201004
+                       CHANGING pt_list TYPE zssk201001_t.
+  IF zssk20100-stats = 'B' OR zssk20100-stats = 'C'.
+    DELETE gt_list WHERE apstatus <> zssk20100-stats.
+  ELSEIF zssk20100-stats = 'A'.
+    DELETE gt_list WHERE apstatus = 'B' OR apstatus = 'C'.
+  ENDIF.
+
+*  DELETE gt_list WHERE apstatus IS NOT INITIAL
+*                 AND ( enddate < sy-datum ) OR ( applydate > sy-datum ).
+
+  IF ps_str-class1 = 'X'.
+    DELETE pt_list WHERE class <> 'C'.
+  ELSEIF ps_str-class2 = 'X'.
+    DELETE pt_list WHERE class <> 'Y'.
+  ELSEIF ps_str-class3 = 'X'.
+    DELETE pt_list WHERE class <> 'F'.
+  ENDIF.
+
+  IF ps_str-custtype1 = 'X' AND ps_str-custtype2 = 'X'.
+  ELSEIF ps_str-custtype2 = 'X'.
+    DELETE pt_list WHERE custtype <> 'P'.
+  ELSEIF ps_str-custtype1 = 'X'.
+    DELETE pt_list WHERE custtype <> 'B'.
+  ELSE.
+    MESSAGE i000(zmc5a20) WITH TEXT-c09.    "반드시 고객등급 하나를 선택하세요
+    CLEAR pt_list.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_default_value
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- ZSSK201004
+*&---------------------------------------------------------------------*
+FORM set_default_value  CHANGING ps_str TYPE zssk201004.
+  ps_str-custtype1 = 'X'.
+  ps_str-custtype2 = 'X'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_status
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- LS_LIST
+*&---------------------------------------------------------------------*
+FORM get_status  CHANGING ps_list TYPE zssk201001.
+  DATA: ls_data TYPE ztsk20req,
+        lt_data LIKE TABLE OF ls_data.
+
+  SELECT apstatus menunumber applydate enddate
+    FROM ztsk20req
+    INTO CORRESPONDING FIELDS OF TABLE lt_data
+   WHERE carrid = ps_list-carrid
+     AND connid = ps_list-connid
+     AND fldate = ps_list-fldate
+     AND bookid = ps_list-bookid.
+  " 신청레코드가 존재하지 않는 경우
+  IF sy-subrc <> 0.
+    ps_list-apstatus = ''.
+  ENDIF.
+
+  SORT lt_data BY applydate DESCENDING.
+  READ TABLE lt_data INDEX 1 INTO ls_data.
+  ps_list-apstatus = ls_data-apstatus.
+  ps_list-menunumber = ls_data-menunumber.
+  ps_list-applydate = ls_data-applydate.
+  ps_list-enddate = ls_data-enddate.
+ENDFORM.

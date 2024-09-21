@@ -1,0 +1,14 @@
+*&---------------------------------------------------------------------*
+*& Module Pool      SAPMZSK20100
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE mzsk20100_top                           .    " Global Data
+
+INCLUDE mzsk20100_o01                           .  " PBO-Modules
+INCLUDE mzsk20100_i01                           .  " PAI-Modules
+INCLUDE mzsk20100_f01                           .  " FORM-Routines
+
+LOAD-OF-PROGRAM.
+  PERFORM set_default_value CHANGING zssk201004.
