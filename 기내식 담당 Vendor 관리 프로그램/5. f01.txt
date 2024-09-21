@@ -1,0 +1,275 @@
+*&---------------------------------------------------------------------*
+*& Include          MZSK20VEN_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_condition_info
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ZSSK2001_LIFNR
+*&      <-- ZSSK2001_NAME2
+*&---------------------------------------------------------------------*
+FORM get_condition_info  USING    VALUE(p_lifnr)
+                         CHANGING p_name2.
+  DATA: ls_data TYPE zssk2001,
+        lt_data LIKE TABLE OF ls_data.
+
+  " 인터널 테이블에서 정보 불러오기
+  READ TABLE lt_data WITH KEY lifnr = p_lifnr INTO ls_data.
+
+  "정보가 있다면
+  IF sy-subrc = 0.
+    p_name2 = ls_data-name2.
+    RETURN.
+  ENDIF.
+
+  " 회사 팀명 불러오기
+  SELECT SINGLE name2
+    FROM zts20ven
+    INTO CORRESPONDING FIELDS OF ls_data
+    WHERE lifnr = p_lifnr.
+  p_name2 = ls_data-name2.
+  APPEND ls_data TO lt_data.
+    gv_subrc = sy-subrc.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_vendor_info
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ZSSK2001_LIFNR
+*&      <-- ZSSK2002
+*&      <-- ZSSK2002_VENDT
+*&---------------------------------------------------------------------*
+FORM get_vendor_info  USING    VALUE(p_lifnr)
+                      CHANGING p_str
+                               p_vendt.
+  SELECT SINGLE lifnr land1 name1 name2 venca
+      FROM zts20ven
+      INTO CORRESPONDING FIELDS OF p_str
+      WHERE lifnr = p_lifnr.
+
+  IF sy-langu = '3'.                " 언어타입이 한글일 경우
+    zssk2002-name = zssk2002-name1.
+  ELSEIF sy-langu = 'E'.            " 언어타입이 영어일 경우
+    zssk2002-name = zssk2002-name2.
+  ENDIF.
+
+  " Function Group으로 Fixed Value 불러오기
+    gv_dom = 'ZDSKVENCA'.
+  PERFORM get_function_domain USING zssk2002-venca
+                              CHANGING p_vendt.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_vendor_land_text
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ZSSK2002_LAND1
+*&      <-- ZSSK2002_LANDX
+*&---------------------------------------------------------------------*
+FORM get_vendor_land_text  USING    VALUE(p_land1)
+                           CHANGING p_landx.
+  SELECT SINGLE landx
+        FROM t005t
+        INTO p_landx
+        WHERE land1 = p_land1
+          AND spras = sy-langu.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_vendor_meal
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ZSSK2001_LIFNR
+*&      <-- ZSSK2003
+*&---------------------------------------------------------------------*
+FORM get_vendor_meal  USING    VALUE(p_lifnr)
+                               VALUE(p_date)
+                      CHANGING p_str.
+
+  SELECT SINGLE carrid fmenu sdate fdate mprice waers
+    FROM zts20ven_n
+    INTO CORRESPONDING FIELDS OF p_str
+    WHERE lifnr = p_lifnr
+      AND fdate > p_date AND sdate =< p_date.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_meal_info
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ZSSK2003_CARRID
+*&      --> ZSSK2003_FMENU
+*&      <-- ZSSK2003
+*&---------------------------------------------------------------------*
+FORM get_meal_info  USING    VALUE(p_carrid)
+                             VALUE(p_fmenu)
+                    CHANGING p_str.
+  SELECT SINGLE starter maincourse dessert
+        FROM smenu
+        INTO CORRESPONDING FIELDS OF p_str
+        WHERE carrid = p_carrid
+          AND menunumber = p_fmenu.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_meal_text
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ZSSK2003_CARRID
+*&      --> ZSSK2003_FMENU
+*&      <-- ZSSK2003_MEALTYPE1
+*&---------------------------------------------------------------------*
+FORM get_meal_text  USING    VALUE(p_carrid)
+                             VALUE(p_menu)
+                    CHANGING p_mealtype.
+  SELECT SINGLE text
+        FROM smealt
+        INTO p_mealtype
+        WHERE carrid = p_carrid
+          AND mealnumber = p_menu
+          AND sprache = sy-langu.
+  " 에피타이저 hot 유무
+  PERFORM get_starter_hot USING zssk2003-carrid zssk2003-starter
+                          CHANGING zssk2003-starter_h.
+  " 디저트 hot 유무
+  PERFORM get_dessert_hot USING zssk2003-carrid zssk2003-dessert
+                          CHANGING zssk2003-dessert_h.
+  " 메인 요리 mealtype
+  PERFORM get_maincourse_mealtype USING zssk2003-carrid zssk2003-maincourse
+                                  CHANGING zssk2003-mealtype_h.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_airport_name
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ZSSK2003_CARRID
+*&      <-- ZSSK2003_CARRNAME
+*&---------------------------------------------------------------------*
+FORM get_airport_name  USING    VALUE(p_carrid)
+                      CHANGING p_carrname.
+  SELECT SINGLE carrname
+    FROM scarr
+    INTO p_carrname
+    WHERE carrid = p_carrid.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_starter_hot
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ZSSK2003_CARRID
+*&      --> ZSSK2003_STARTER
+*&      <-- ZSSK2003_STARTER_H
+*&---------------------------------------------------------------------*
+FORM get_starter_hot  USING    VALUE(p_carrid)
+                               VALUE(p_starter)
+                      CHANGING p_starter_h.
+  SELECT SINGLE hot
+     FROM sstarter
+     INTO p_starter_h
+     WHERE carrid = p_carrid
+       AND mealnumber = p_starter.
+
+  " Function Group으로 Fixed Value 불러오기
+
+  gv_dom = 'S_HOT'.
+  PERFORM get_function_domain USING p_starter_h
+                              CHANGING zssk2003-starter_ht.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_dessert_hot
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ZSSK2003_CARRID
+*&      --> ZSSK2003_DESSERT
+*&      <-- ZSSK2003_DESSERT_H
+*&---------------------------------------------------------------------*
+FORM get_dessert_hot  USING    VALUE(p_carrid)
+                               VALUE(p_dessert)
+                      CHANGING p_dessert_h.
+  " Function Group으로 Fixed Value 불러오기
+  SELECT SINGLE hot
+     FROM sdessert
+     INTO p_dessert_h
+     WHERE carrid = p_carrid
+       AND mealnumber = p_dessert.
+
+  READ TABLE gt_domain WITH KEY  domvalue_l = p_dessert_h INTO gs_domain.
+  zssk2003-dessert_ht = gs_domain-ddtext.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_condition
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- ZSSK2001_LIFNR
+*&      <-- ZSSK2001_NAME2
+*&      <-- ZSSK2001_DATE
+*&---------------------------------------------------------------------*
+FORM set_condition  CHANGING p_lifnr
+                             p_name2
+                             p_date.
+  p_lifnr = 'V240200002'.
+  p_name2 = 'SYNC 5th 4team Company'.
+  p_date = sy-datum.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_function_domain
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ZSSK2002_VENCA
+*&      <-- P_VENDT
+*&---------------------------------------------------------------------*
+FORM get_function_domain  USING    VALUE(p_use)
+                          CHANGING p_change.
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+    EXPORTING
+      domname         = gv_dom
+*     TEXT            = 'X'
+*     FILL_DD07L_TAB  = ' '
+    TABLES
+      values_tab      = gt_domain
+*     VALUES_DD07L    =
+    EXCEPTIONS
+      no_values_found = 1
+      OTHERS          = 2.
+
+  READ TABLE gt_domain WITH KEY  domvalue_l = p_use INTO gs_domain.
+    p_change = gs_domain-ddtext.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_maincourse_mealtype
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ZSSK2003_CARRID
+*&      --> ZSSK2003_MAINCOURSE
+*&      <-- ZSSK2003_MEALTYPE_T
+*&---------------------------------------------------------------------*
+FORM get_maincourse_mealtype  USING    VALUE(p_carrid)
+                                       VALUE(p_maincourse)
+                              CHANGING p_mealtype_h.
+    SELECT SINGLE mealtype
+     FROM smeal
+     INTO p_mealtype_h
+     WHERE carrid = p_carrid
+       AND mealnumber = p_maincourse.
+
+  " Function Group으로 Fixed Value 불러오기
+
+  gv_dom = 'S_MEALTYPE'.
+  PERFORM get_function_domain USING p_mealtype_h
+                              CHANGING zssk2003-mealtype_ht.
+
+ENDFORM.

@@ -1,0 +1,45 @@
+*&---------------------------------------------------------------------*
+*& Module Pool      SAPMZSK20VEN
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE mzsk20ven_n_top.
+*INCLUDE mzsk20ven_top                           .    " Global Data
+
+INCLUDE mzsk20ven_n_o01.
+*INCLUDE mzsk20ven_o01                           .  " PBO-Modules
+INCLUDE mzsk20ven_n_i01.
+*INCLUDE mzsk20ven_i01                           .  " PAI-Modules
+INCLUDE mzsk20ven_n_f01.
+*INCLUDE mzsk20ven_f01                           .  " FORM-Routines
+
+LOAD-OF-PROGRAM.
+  " 조건문의 정보 가져오기
+  PERFORM set_condition CHANGING zssk2001-lifnr zssk2001-name2 zssk2001-date.
+
+  " Vendor 정보
+  PERFORM get_vendor_info USING zssk2001-lifnr
+                          CHANGING zssk2002 zssk2002-vendt.
+
+  " 나라 이름
+  PERFORM get_vendor_land_text USING zssk2002-land1
+                               CHANGING zssk2002-landx.
+  " vendor의 기내식 정보
+  PERFORM get_vendor_meal USING zssk2001-lifnr zssk2001-date
+                          CHANGING zssk2003.
+  " 항공사  이름
+  PERFORM get_airport_name USING zssk2003-carrid
+                          CHANGING zssk2003-carrname.
+  " 기내식 코드
+  PERFORM get_meal_info USING zssk2003-carrid zssk2003-fmenu
+                        CHANGING zssk2003.
+  " 에피타이저
+  PERFORM get_meal_text USING zssk2003-carrid zssk2003-starter
+                        CHANGING zssk2003-mealtype1.
+  " 메인 요리
+  PERFORM get_meal_text USING zssk2003-carrid zssk2003-maincourse
+                        CHANGING zssk2003-mealtype2.
+  " 디저트
+  PERFORM get_meal_text USING zssk2003-carrid zssk2003-dessert
+                        CHANGING zssk2003-mealtype3.

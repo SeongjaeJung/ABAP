@@ -1,0 +1,79 @@
+*&---------------------------------------------------------------------*
+*& Include          MZSK20VEN_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  CASE ok_code.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+    WHEN 'ENTER'.
+      " 조건의 데이터 가져오기
+      PERFORM get_condition_info USING zssk2001-lifnr
+                                 CHANGING zssk2001-name2.
+      " 잘못된 ID 를 입력한 경우
+      IF gv_subrc <> 0.
+        CLEAR zssk2001-name2.
+        CLEAR zssk2002.
+        CLEAR zssk2003.
+        MESSAGE i010(zmc5a20) WITH zssk2002-lifnr.
+        RETURN.
+      ENDIF.
+
+    WHEN 'TAB1' OR 'TAB2'.
+      tab_strip-activetab = ok_code.
+
+    WHEN 'SEARCH'.
+      " Vendor 정보
+      PERFORM get_vendor_info USING zssk2001-lifnr
+                              CHANGING zssk2002 zssk2002-vendt.
+      " 나라 이름
+      PERFORM get_vendor_land_text USING zssk2002-land1
+                                   CHANGING zssk2002-landx.
+      " vendor의 기내식 정보
+      PERFORM get_vendor_meal USING zssk2001-lifnr zssk2001-date
+                              CHANGING zssk2003.
+      IF zssk2001-date < '20240101'.
+        CLEAR zssk2001-name2.
+        CLEAR zssk2002.
+        CLEAR zssk2003.
+        MESSAGE i000(zmc5a20) WITH TEXT-F01 . "'2024년 정보만 확인하실 수 있습니다.'.
+        RETURN.
+      ENDIF.
+
+      " 항공사 이름
+      PERFORM get_airport_name USING zssk2003-carrid
+                              CHANGING zssk2003-carrname.
+      " 기내식 코드
+      PERFORM get_meal_info USING zssk2003-carrid zssk2003-fmenu
+                            CHANGING zssk2003.
+      " 에피타이저
+      PERFORM get_meal_text USING zssk2003-carrid zssk2003-starter
+                            CHANGING zssk2003-mealtype1.
+      " 메인 요리
+      PERFORM get_meal_text USING zssk2003-carrid zssk2003-maincourse
+                            CHANGING zssk2003-mealtype2.
+      " 디저트
+      PERFORM get_meal_text USING zssk2003-carrid zssk2003-dessert
+                            CHANGING zssk2003-mealtype3.
+
+    WHEN OTHERS.
+  ENDCASE.
+ENDMODULE.

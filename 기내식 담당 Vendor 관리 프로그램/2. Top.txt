@@ -1,0 +1,16 @@
+*&---------------------------------------------------------------------*
+*& Include MZSK20VEN_TOP                            - Module Pool      SAPMZSK20VEN
+*&---------------------------------------------------------------------*
+PROGRAM SAPMZSK20VEN.
+
+DATA: ok_code TYPE sy-ucomm,
+      gv_subrc TYPE sy-subrc,
+      gv_dynnr TYPE sy-dynnr.
+
+TABLES: zssk2001, zssk2002, zssk2003.
+
+CONTROLS tab_strip TYPE TABSTRIP.
+
+DATA: gt_domain TYPE TABLE OF dd07v,
+      gs_domain LIKE LINE OF gt_domain,
+      gv_dom TYPE dd07l-domname.
