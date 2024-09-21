@@ -1,0 +1,16 @@
+*&---------------------------------------------------------------------*
+*& Module Pool      SAPMZ5A2094
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE mz5a2094_top                            .    " Global Data
+
+INCLUDE mz5a2094_o01                            .  " PBO-Modules
+INCLUDE mz5a2094_i01                            .  " PAI-Modules
+INCLUDE mz5a2094_f01                            .  " FORM-Routines
+
+LOAD-OF-PROGRAM.
+
+PERFORM set_default_date USING sy-datum
+                         CHANGING zs5a20941.

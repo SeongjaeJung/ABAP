@@ -1,0 +1,25 @@
+*&---------------------------------------------------------------------*
+*& Include MZ5A2094_TOP                             - Module Pool      SAPMZ5A2094
+*&---------------------------------------------------------------------*
+PROGRAM SAPMZ5A2094.
+
+DATA: ok_code TYPE sy-ucomm,
+      gv_okcode LIKE ok_code,
+      gv_subrc TYPE sy-subrc.
+
+TABLES: zs5a20941, zs5a20942.
+DATA: gs_list TYPE zs5a2094,
+      gt_list LIKE TABLE OF gs_list.
+
+DATA: go_con TYPE REF TO cl_gui_custom_container,
+      go_alv TYPE REF TO cl_gui_alv_grid.
+
+DATA: gs_layo TYPE LVC_S_LAYO,
+      gt_sort TYPE LVC_T_SORT,
+      gs_sort LIKE LINE OF gt_sort.
+
+DATA: gt_fcat TYPE LVC_T_FCAT,
+      gs_fcat LIKE LINE OF gt_fcat.
+
+DATA: gs_detail TYPE zs5a20942,
+      gt_detail LIKE TABLE OF gs_detail.

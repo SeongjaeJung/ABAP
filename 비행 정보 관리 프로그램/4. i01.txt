@@ -1,0 +1,56 @@
+*&---------------------------------------------------------------------*
+*& Include          MZ5A2094_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  CASE ok_code.
+    WHEN 'EXIT' OR 'CANC'.
+      LEAVE PROGRAM.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+    WHEN 'ENTER'.
+
+    WHEN 'SEARCH'.
+      IF zs5a20941-sdate IS INITIAL OR zs5a20941-fdate IS INITIAL.
+        MESSAGE i000(zmc5a20) WITH TEXT-C26.
+      ENDIF.
+      " Flight Info
+      PERFORM get_flight_info USING zs5a20941
+                              CHANGING gt_list.
+    WHEN 'DETAIL'.
+      " Detail 화면
+      PERFORM get_detail_condition CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ELSEIF gv_subrc = 0.
+        MOVE-CORRESPONDING gs_detail TO zs5a20942.
+
+      ENDIF.
+      CALL SCREEN '0200'.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+  CASE gv_okcode.
+    WHEN 'BACK' OR 'EXIT' OR 'CANC'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.

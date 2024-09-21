@@ -1,0 +1,399 @@
+*&---------------------------------------------------------------------*
+*& Include          MZ5A2094_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form set_default_date
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> SY_DATUM
+*&      --> ZS5A20941
+*&---------------------------------------------------------------------*
+FORM set_default_date  USING    VALUE(p_datum)
+                                CHANGING ps_str TYPE zs5a20941.
+  ps_str-sdate = sy-datum.
+  ps_str-fdate = '20240930'.
+
+  PERFORM get_flight_info USING zs5a20941
+                          CHANGING gt_list.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_alv
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_alv .
+  CREATE OBJECT go_con
+    EXPORTING
+*     parent         =
+      container_name = 'CON'
+*     style          =
+*     lifetime       = lifetime_default
+*     repid          =
+*     dynnr          =
+*     no_autodef_progid_dynnr     =
+*    EXCEPTIONS
+*     cntl_error     = 1
+*     cntl_system_error           = 2
+*     create_error   = 3
+*     lifetime_error = 4
+*     lifetime_dynpro_dynpro_link = 5
+*     others         = 6
+    .
+  IF sy-subrc <> 0.
+*   MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*              WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    MESSAGE a010(zmc5a20).
+  ENDIF.
+
+  CREATE OBJECT go_alv
+    EXPORTING
+*     i_shellstyle      = 0
+*     i_lifetime        =
+      i_parent = go_con
+*     i_appl_events     = SPACE
+*     i_parentdbg       =
+*     i_applogparent    =
+*     i_graphicsparent  =
+*     i_name   =
+*     i_fcat_complete   = SPACE
+*     o_previous_sral_handler =
+*  EXCEPTIONS
+*     error_cntl_create = 1
+*     error_cntl_init   = 2
+*     error_cntl_link   = 3
+*     error_dp_create   = 4
+*     others   = 5
+    .
+  IF sy-subrc <> 0.
+* MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    MESSAGE a011(zmc5a20).
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_alv
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_alv .
+  PERFORM alv_layout .
+
+  PERFORM alv_sort.
+
+  PERFORM alv_fieldcatalog.
+
+  CALL METHOD go_alv->set_table_for_first_display
+    EXPORTING
+*     i_buffer_active  =
+*     i_bypassing_buffer            =
+*     i_consistency_check           =
+      i_structure_name = 'ZS5A2094'
+*     is_variant       =
+*     i_save           =
+*     i_default        = 'X'
+      is_layout        = gs_layo
+*     is_print         =
+*     it_special_groups             =
+*     it_toolbar_excluding          =
+*     it_hyperlink     =
+*     it_alv_graphics  =
+*     it_except_qinfo  =
+*     ir_salv_adapter  =
+    CHANGING
+      it_outtab        = gt_list
+      it_fieldcatalog  = gt_fcat
+      it_sort          = gt_sort
+*     it_filter        =
+*    EXCEPTIONS
+*     invalid_parameter_combination = 1
+*     program_error    = 2
+*     too_many_lines   = 3
+*     others           = 4
+    .
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+    MESSAGE a012(zmc5a20).
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_flight_info
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ZS5A20941
+*&      <-- GT_LIST
+*&---------------------------------------------------------------------*
+FORM get_flight_info  USING    VALUE(ps_str) TYPE zs5a20941
+                      CHANGING pt_list TYPE zs5a2094_t.
+  SELECT a~carrid carrname connid fldate
+         price currency planetype
+    FROM sflight AS a INNER JOIN scarr AS b
+      ON a~carrid = b~carrid
+    INTO CORRESPONDING FIELDS OF TABLE pt_list
+   WHERE fldate BETWEEN ps_str-sdate AND ps_str-fdate.
+
+  PERFORM light_condition .
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form alv_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM alv_layout .
+  IF gs_layo IS INITIAL.
+    gs_layo-zebra = 'X'.
+    gs_layo-cwidth_opt = 'X'.
+    gs_layo-excp_fname = 'LIGHT'.
+    gs_layo-excp_led = 'X'.
+*    gs_layo-info_fname = 'COLOR'.
+    gs_layo-ctab_fname = 'IT_COL'.
+    gs_layo-sel_mode = 'A'.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form alv_sort
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM alv_sort .
+  CLEAR: gs_sort, gt_sort.
+  gs_sort-spos = '1'.
+  gs_sort-fieldname = 'CURRENCY'.
+  gs_sort-down = 'X'.
+  APPEND gs_sort TO gt_sort.
+  CLEAR gs_sort.
+  gs_sort-spos = '2'.
+  gs_sort-fieldname = 'PRICE'.
+  gs_sort-down = 'X'.
+  APPEND gs_sort TO gt_sort.
+  CLEAR gs_sort.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form alv_fieldcatalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM alv_fieldcatalog .
+  CLEAR: gs_fcat, gt_fcat.
+  gs_fcat-fieldname = 'CARRID'.
+  gs_fcat-no_out = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+  gs_fcat-fieldname = 'CARRNAME'.
+  gs_fcat-coltext = TEXT-c20.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+  gs_fcat-fieldname = 'LIGHT'.
+  gs_fcat-coltext = TEXT-c21.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form light_condition
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM light_condition .
+  LOOP AT gt_list INTO gs_list.
+    DATA ls_col LIKE LINE OF gs_list-it_col.
+
+    IF gs_list-carrid = 'DL'.
+      gs_list-light = '1'.
+    ELSEIF gs_list-planetype = 'A380-800'.
+      gs_list-light = '2'.
+      ls_col-fname = 'PLANETYPE'.
+      ls_col-color-col = '6'.
+      ls_col-color-int = '1'.
+      ls_col-color-inv = '1'.
+      APPEND ls_col TO gs_list-it_col.
+    ELSE.
+      gs_list-light = '3'.
+    ENDIF.
+    MODIFY gt_list FROM gs_list.
+    CLEAR gs_list.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_detail_condition
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_detail_condition CHANGING lv_subrc.
+  DATA: lt_rows TYPE lvc_t_row,
+        ls_rows LIKE LINE OF lt_rows,
+        lv_cnt  TYPE i.
+  CLEAR: lt_rows, lv_cnt, ls_rows.
+  CALL METHOD go_alv->get_selected_rows
+    IMPORTING
+      et_index_rows = lt_rows
+*     et_row_no     =
+    .
+  DESCRIBE TABLE lt_rows LINES lv_cnt.
+* 1건만 선택했는지 체크
+  READ TABLE lt_rows INDEX 1 INTO ls_rows.
+  READ TABLE gt_list INDEX ls_rows-index INTO gs_list.
+  " 조건에 따라 메세지
+  IF lv_cnt = 1.                " 1개만 선택했을때
+    IF gs_list-carrid = 'DL'.
+      MESSAGE i000(zmc5a20) WITH TEXT-c24.      "DL 항공사는 운행하지 않습니다.
+      lv_subrc = 4.
+    ELSEIF gs_list-planetype = 'A380-800'.
+      lv_subrc = 0.
+      MESSAGE i000(zmc5a20) WITH TEXT-c25.      "A380-800 항공기는 오류 결함이 있을 수 있습니다.
+      " 세부 정보 취득
+      PERFORM get_detail_sflight.
+      " Deatil -scarr
+      PERFORM get_detail_scarr.
+      " Detail - spfli
+      PERFORM get_detail_spfli.
+      " 국내선 국제선
+      PERFORM get_airport_type.
+    ELSE.
+      lv_subrc = 0.
+      " 세부 정보 취득
+      PERFORM get_detail_sflight.
+      " Deatil -scarr
+      PERFORM get_detail_scarr .
+      " Detail - spfli
+      PERFORM get_detail_spfli.
+    ENDIF.
+  ELSEIF lv_cnt = 0.                " 선택 안했을때
+    MESSAGE i000(zmc5a20) WITH TEXT-c22.    "데이터를 선택하세요
+    lv_subrc = 4.
+  ELSEIF lv_cnt > 1.                " 여러개 선택했을 때
+    MESSAGE i000(zmc5a20) WITH TEXT-c23.    "1개의 데이터만 선택해주세요
+    lv_subrc = 4.
+  ENDIF.
+  CLEAR gs_list.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_detail_sflight
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_detail_sflight .
+  SELECT SINGLE carrid connid fldate price currency planetype
+    FROM sflight
+    INTO CORRESPONDING FIELDS OF gs_detail
+   WHERE carrid = gs_list-carrid
+     AND connid = gs_list-connid
+     AND fldate = gs_list-fldate.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_detail_scarr
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- GV_SUBRC
+*&---------------------------------------------------------------------*
+FORM get_detail_scarr .
+
+  SELECT SINGLE carrname
+    FROM scarr
+    INTO gs_detail-carrname
+   WHERE carrid = gs_list-carrid.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_detail_spfli
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_detail_spfli .
+  SELECT SINGLE countryfr airpfrom cityfrom countryto airpto cityto
+    FROM spfli
+    INTO CORRESPONDING FIELDS OF gs_detail
+   WHERE carrid = gs_list-carrid
+     AND connid = gs_list-connid.
+
+    IF sy-subrc = 0.
+      " 출발 정보
+      PERFORM get_land_name USING gs_detail-countryfr
+                            CHANGING gs_detail-landx.
+      PERFORM get_city_name USING gs_detail-airpfrom
+                            CHANGING gs_detail-name.
+      "도착 정보
+      PERFORM get_land_name USING gs_detail-countryto
+                            CHANGING gs_detail-landx1.
+      PERFORM get_city_name USING gs_detail-airpto
+                            CHANGING gs_detail-name1.
+    ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_land_name
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_land_name USING VALUE(pv_country)
+                   CHANGING pv_land.
+  SELECT SINGLE landx
+    FROM t005t
+    INTO pv_land
+   WHERE land1 = pv_country
+     AND spras = sy-langu.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_city_name
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_city_name USING VALUE(pv_city)
+                   CHANGING pv_name.
+  SELECT SINGLE name
+    FROM sairport
+    INTO pv_name
+   WHERE id = pv_city.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_airport_type
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_airport_type .
+  IF gs_detail-countryfr = gs_detail-countryto.
+    gs_detail-rad2 = 'X'.
+  ELSE.
+    gs_detail-rad1 = 'X'.
+  ENDIF.
+ENDFORM.
